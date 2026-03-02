@@ -1,0 +1,763 @@
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>ILJIN Global | 유성기어 조달 관리</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root{--bg:#1a1a2e;--bg2:#0f3460;--bg3:#16213e;--red:#e94560;--cyan:#00b4d8;
+  --green:#06d6a0;--yellow:#ffd166;--white:#fff;--muted:#8a8a9a;--border:rgba(255,255,255,.08);}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'맑은 고딕','Malgun Gothic',sans-serif;background:var(--bg);color:var(--white);min-height:100vh;}
+
+/* ── CSV 내보내기 배너 ── */
+.export-banner{background:linear-gradient(135deg,#0f3460,#16213e);border-bottom:2px solid var(--cyan);
+  padding:10px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
+.export-banner .title{font-size:0.85rem;font-weight:700;color:var(--cyan);}
+.export-banner .desc{font-size:0.75rem;color:var(--muted);margin-top:2px;}
+.export-btns{display:flex;gap:8px;flex-wrap:wrap;}
+.btn-export{padding:8px 16px;border-radius:7px;border:none;cursor:pointer;font-size:0.82rem;font-weight:700;
+  display:flex;align-items:center;gap:6px;transition:all .2s;}
+.btn-export:hover{transform:translateY(-1px);opacity:.9;}
+.btn-exp-vendor{background:rgba(255,209,102,.2);color:var(--yellow);border:1px solid rgba(255,209,102,.5);}
+.btn-exp-order {background:rgba(0,180,216,.2); color:var(--cyan);  border:1px solid rgba(0,180,216,.5);}
+.btn-exp-all   {background:rgba(6,214,160,.2); color:var(--green); border:1px solid rgba(6,214,160,.5);}
+
+/* ── 상단 헤더 ── */
+.top-bar{background:var(--bg3);border-bottom:2px solid var(--red);padding:11px 24px;
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;}
+.top-bar h1{font-size:1.05rem;font-weight:700;}
+.top-bar .sub{font-size:0.73rem;color:var(--muted);margin-top:2px;}
+.top-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.btn{padding:7px 14px;border-radius:6px;border:none;cursor:pointer;font-size:0.8rem;font-weight:600;transition:all .2s;}
+.btn-cyan  {background:rgba(0,180,216,.15);color:var(--cyan);  border:1px solid rgba(0,180,216,.4);}
+.btn-green {background:rgba(6,214,160,.15);color:var(--green); border:1px solid rgba(6,214,160,.4);}
+.btn-yellow{background:rgba(255,209,102,.15);color:var(--yellow);border:1px solid rgba(255,209,102,.4);}
+.btn-red   {background:rgba(233,69,96,.15); color:var(--red);  border:1px solid rgba(233,69,96,.4);}
+.btn-ghost {background:transparent;color:var(--muted);border:1px solid var(--border);}
+.btn:hover {opacity:.8;}
+
+/* ── 네비 ── */
+.nav{background:var(--bg3);padding:0 24px;display:flex;border-bottom:1px solid var(--border);overflow-x:auto;}
+.nav-tab{padding:13px 20px;cursor:pointer;font-size:0.84rem;color:var(--muted);
+  border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;}
+.nav-tab.active{color:var(--cyan);border-bottom-color:var(--cyan);font-weight:600;}
+
+/* ── 메인 ── */
+.main{padding:20px;max-width:1440px;margin:0 auto;}
+.section{display:none;}.section.active{display:block;}
+.card{background:var(--bg3);border-radius:12px;padding:20px;border:1px solid var(--border);margin-bottom:20px;}
+.card-title{font-size:.98rem;font-weight:600;color:var(--cyan);margin-bottom:14px;}
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px;}
+.kpi{background:var(--bg3);border-radius:10px;padding:16px;border-left:4px solid;}
+.kpi.red{border-color:var(--red);}.kpi.cyan{border-color:var(--cyan);}
+.kpi.green{border-color:var(--green);}.kpi.yellow{border-color:var(--yellow);}
+.kpi-label{font-size:.73rem;color:var(--muted);margin-bottom:5px;}
+.kpi-value{font-size:1.7rem;font-weight:700;}
+.kpi-sub{font-size:.7rem;color:var(--muted);margin-top:3px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+.chart-wrap{height:230px;position:relative;}
+.toolbar{display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;align-items:center;}
+.search-input{flex:1;min-width:180px;padding:8px 14px;background:var(--bg);
+  border:1px solid var(--border);border-radius:7px;color:var(--white);font-size:.84rem;}
+.search-input::placeholder{color:var(--muted);}
+.filter-btn{padding:7px 13px;border-radius:6px;cursor:pointer;font-size:.79rem;
+  background:var(--bg);border:1px solid var(--border);color:var(--muted);transition:all .2s;}
+.filter-btn.active{background:rgba(0,180,216,.15);color:var(--cyan);border-color:rgba(0,180,216,.4);}
+.tbl-wrap{overflow-x:auto;}
+table{width:100%;border-collapse:collapse;font-size:.81rem;}
+th{background:var(--bg2);color:var(--muted);padding:9px 11px;text-align:left;
+  font-weight:600;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:8px 11px;border-bottom:1px solid var(--border);vertical-align:middle;}
+tr:hover td{background:rgba(255,255,255,.02);}
+.tag{display:inline-block;padding:2px 7px;border-radius:4px;font-size:.7rem;font-weight:600;margin:1px;}
+.status-badge{padding:3px 9px;border-radius:20px;font-size:.7rem;font-weight:600;}
+.s-active  {background:rgba(6,214,160,.15);color:var(--green);}
+.s-review  {background:rgba(255,209,102,.15);color:var(--yellow);}
+.s-inactive{background:rgba(233,69,96,.15);color:var(--red);}
+.score-bar-wrap{display:flex;align-items:center;gap:7px;}
+.score-bar-bg{flex:1;height:5px;background:rgba(255,255,255,.1);border-radius:3px;}
+.score-bar-fill{height:100%;border-radius:3px;}
+.flow-wrap{overflow-x:auto;padding-bottom:6px;}
+.flow-row{display:flex;align-items:center;gap:6px;margin-bottom:10px;min-width:700px;}
+.flow-label{min-width:120px;font-size:.77rem;font-weight:700;padding:7px 10px;border-radius:6px;text-align:center;}
+.flow-node{padding:7px 11px;border-radius:7px;font-size:.76rem;font-weight:600;text-align:center;min-width:88px;border:1px solid;}
+.flow-arrow{color:var(--muted);}
+.sync-status{font-size:.74rem;color:var(--muted);display:flex;align-items:center;gap:5px;}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--green);}
+.sync-dot.syncing{background:var(--yellow);animation:blink 1s infinite;}
+.sync-dot.error{background:var(--red);}
+@keyframes blink{50%{opacity:.3}}
+.loading-box{text-align:center;padding:28px;color:var(--muted);}
+.modal-bg{display:none;position:fixed;top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,.75);z-index:1000;align-items:center;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:var(--bg3);border-radius:14px;padding:26px;width:90%;max-width:640px;
+  max-height:90vh;overflow-y:auto;border:1px solid var(--border);}
+.modal-title{font-size:1.05rem;font-weight:700;margin-bottom:18px;color:var(--cyan);}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
+.form-group{display:flex;flex-direction:column;gap:5px;}
+.form-group.full{grid-column:1/-1;}
+label{font-size:.77rem;color:var(--muted);font-weight:600;}
+input,select,textarea{background:var(--bg);border:1px solid var(--border);border-radius:7px;
+  padding:8px 11px;color:var(--white);font-size:.83rem;font-family:inherit;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--cyan);}
+textarea{resize:vertical;min-height:60px;}
+.check-group{display:flex;flex-wrap:wrap;gap:7px;margin-top:3px;}
+.check-item{display:flex;align-items:center;gap:4px;font-size:.77rem;cursor:pointer;}
+.check-item input[type=checkbox]{width:13px;height:13px;accent-color:var(--cyan);}
+@media(max-width:768px){
+  .kpi-grid{grid-template-columns:1fr 1fr;}
+  .grid2{grid-template-columns:1fr;}
+  .form-grid{grid-template-columns:1fr;}
+  .form-group.full{grid-column:1;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ CSV 내보내기 배너 (최상단) ══ -->
+<div class="export-banner">
+  <div>
+    <div class="title">📥 데이터 내보내기 (CSV)</div>
+    <div class="desc">구글시트 데이터를 엑셀에서 바로 열 수 있는 CSV 파일로 추출합니다</div>
+  </div>
+  <div class="export-btns">
+    <button class="btn-export btn-exp-vendor" onclick="exportCSV('vendors')">
+      🏭 업체 Pool CSV
+    </button>
+    <button class="btn-export btn-exp-order" onclick="exportCSV('orders')">
+      📋 견적 이력 CSV
+    </button>
+    <button class="btn-export btn-exp-all" onclick="exportAllCSV()">
+      📦 전체 내보내기 (ZIP)
+    </button>
+  </div>
+</div>
+
+<!-- ══ 상단 헤더 ══ -->
+<div class="top-bar">
+  <div>
+    <h1>⚙ ILJIN Global | 유성기어 조달 관리 시스템</h1>
+    <div class="sub">구매본부 선행구매팀 · 트랜시스PnD / 모비스A6 / 모비스A8</div>
+  </div>
+  <div class="top-actions">
+    <div class="sync-status">
+      <div class="sync-dot" id="syncDot"></div>
+      <span id="syncMsg">연결중...</span>
+    </div>
+    <button class="btn btn-green" onclick="loadAll()">🔄 새로고침</button>
+    <button class="btn btn-ghost" onclick="logout()">로그아웃</button>
+  </div>
+</div>
+
+<!-- ══ 네비 탭 ══ -->
+<div class="nav">
+  <div class="nav-tab active" onclick="showTab('dash',this)">📊 대시보드</div>
+  <div class="nav-tab" onclick="showTab('vendor',this)">🏭 업체 Pool</div>
+  <div class="nav-tab" onclick="showTab('process',this)">⚙ 공정 관리</div>
+  <div class="nav-tab" onclick="showTab('order',this)">📋 견적 이력</div>
+  <div class="nav-tab" onclick="showTab('analysis',this)">📈 경쟁력 분석</div>
+</div>
+
+<div class="main">
+
+<!-- ══ 대시보드 ══ -->
+<div class="section active" id="sec-dash">
+  <div class="kpi-grid">
+    <div class="kpi red"><div class="kpi-label">등록 업체 수</div><div class="kpi-value" id="kpi-v">-</div><div class="kpi-sub">전체 Pool</div></div>
+    <div class="kpi cyan"><div class="kpi-label">견적 이력 건수</div><div class="kpi-value" id="kpi-o">-</div><div class="kpi-sub">누적</div></div>
+    <div class="kpi green"><div class="kpi-label">관리 공정 수</div><div class="kpi-value">11</div><div class="kpi-sub">3-Track + 공통</div></div>
+    <div class="kpi yellow"><div class="kpi-label">진행 프로젝트</div><div class="kpi-value">3</div><div class="kpi-sub">PnD · A6 · A8</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">📊 Track × 프로젝트별 가능 업체 현황</div>
+      <div style="font-size:.72rem;color:var(--muted);margin:-8px 0 10px">공통4공정(열처리·기어가공·연마·ASSY) 대응 가능 업체 수</div>
+      <div class="chart-wrap"><canvas id="chartTrack"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title">💰 프로젝트별 평균 견적 단가</div>
+      <div class="chart-wrap"><canvas id="chartPrice"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🕐 최근 견적 이력 (최신 5건)</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>날짜</th><th>업체</th><th>프로젝트</th><th>공정</th><th>수량</th><th>단가(원)</th><th>납기준수</th></tr></thead>
+      <tbody id="recentBody"><tr><td colspan="7" class="loading-box">로딩중...</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ══ 업체 Pool ══ -->
+<div class="section" id="sec-vendor">
+  <div class="toolbar">
+    <input class="search-input" id="vendorSearch" placeholder="🔍 업체명 / 지역 / 인증 검색..." oninput="renderVendors()">
+    <div style="display:flex;gap:6px;flex-wrap:wrap">
+      <button class="filter-btn active" onclick="setVF('all',this)">전체</button>
+      <button class="filter-btn" onclick="setVF('트랜시스PnD',this)">트랜시스 PnD</button>
+      <button class="filter-btn" onclick="setVF('모비스A6',this)">모비스 A6</button>
+      <button class="filter-btn" onclick="setVF('모비스A8',this)">모비스 A8</button>
+    </div>
+    <button class="btn btn-cyan" onclick="openVModal(-1)">+ 업체 등록</button>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>업체명</th><th>지역</th><th>가능 공정</th><th>담당 프로젝트</th><th>인증</th><th>MOQ</th><th>납기(일)</th><th>단가(원)</th><th>대응력</th><th>상태</th><th>관리</th></tr></thead>
+      <tbody id="vendorBody"><tr><td colspan="11" class="loading-box">로딩중...</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ══ 공정 관리 ══ -->
+<div class="section" id="sec-process">
+  <div class="card">
+    <div class="card-title">⚙ 3-Track 병렬 공정 플로우</div>
+    <div class="flow-wrap" id="flowWrap"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">📋 공정별 등록 업체 현황</div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>Track</th><th>공정명</th><th>가능 업체 수</th><th>업체 목록</th></tr></thead>
+      <tbody id="procBody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ══ 견적 이력 ══ -->
+<div class="section" id="sec-order">
+  <div class="toolbar">
+    <input class="search-input" id="orderSearch" placeholder="🔍 업체명 / 공정 / 프로젝트 검색..." oninput="renderOrders()">
+    <select id="orderProjF" onchange="renderOrders()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--white);font-size:.82rem;">
+      <option value="">전체 프로젝트</option>
+      <option>트랜시스PnD</option><option>모비스A6</option><option>모비스A8</option>
+    </select>
+    <button class="btn btn-cyan" onclick="openOModal()">+ 견적 등록</button>
+  </div>
+  <div class="card">
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>견적일</th><th>업체명</th><th>프로젝트</th><th>공정</th><th>수량(개)</th><th>단가(원)</th><th>납기(일)</th><th>납기준수</th><th>비고</th><th>삭제</th></tr></thead>
+      <tbody id="orderBody"><tr><td colspan="10" class="loading-box">로딩중...</td></tr></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ══ 경쟁력 분석 ══ -->
+<div class="section" id="sec-analysis">
+  <div class="toolbar">
+    <select id="anProj" onchange="renderAnalysis()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--white);font-size:.82rem;">
+      <option value="">전체 프로젝트</option>
+      <option>트랜시스PnD</option><option>모비스A6</option><option>모비스A8</option>
+    </select>
+    <select id="anProc" onchange="renderAnalysis()" style="padding:8px 12px;background:var(--bg);border:1px solid var(--border);border-radius:7px;color:var(--white);font-size:.82rem;">
+      <option value="">전체 공정</option>
+    </select>
+    <button class="btn btn-green" onclick="syncAnalysis()">📊 구글시트 분석 갱신</button>
+    <button class="btn-export btn-exp-vendor" style="padding:7px 14px;border-radius:6px;font-size:.79rem;font-weight:600;cursor:pointer" onclick="exportCSV('analysis')">📥 분석 CSV 추출</button>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title">🏆 업체 종합 점수 랭킹</div>
+      <div style="font-size:.72rem;color:var(--muted);margin:-8px 0 10px">가격40% · 품질30% · 납기20% · 대응력10%</div>
+      <div id="rankList"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📡 레이더 차트 (상위 5개사)</div>
+      <div class="chart-wrap"><canvas id="chartRadar"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">💰 업체별 평균 견적 단가 비교</div>
+    <div class="chart-wrap" style="height:270px"><canvas id="chartBar"></canvas></div>
+  </div>
+</div>
+</div><!-- /main -->
+
+<!-- ══ 업체 모달 ══ -->
+<div class="modal-bg" id="vModal">
+<div class="modal">
+  <div class="modal-title" id="vModalTitle">업체 등록</div>
+  <div class="form-grid">
+    <div class="form-group"><label>업체명 *</label><input id="v-name" placeholder="(주)한국정밀"></div>
+    <div class="form-group"><label>지역</label><input id="v-location" placeholder="경기 안산"></div>
+    <div class="form-group"><label>대표 연락처</label><input id="v-phone" placeholder="031-000-0000"></div>
+    <div class="form-group"><label>이메일</label><input id="v-email" placeholder="contact@company.com"></div>
+    <div class="form-group"><label>보유 인증</label><input id="v-cert" placeholder="IATF16949, ISO9001"></div>
+    <div class="form-group"><label>MOQ (개)</label><input id="v-moq" type="number" placeholder="100"></div>
+    <div class="form-group"><label>평균 납기 (일)</label><input id="v-lead" type="number" placeholder="14"></div>
+    <div class="form-group"><label>기준 단가 (원)</label><input id="v-price" type="number" placeholder="15000"></div>
+    <div class="form-group"><label>대응력 점수 (0~100)</label><input id="v-response" type="number" min="0" max="100" placeholder="80"></div>
+    <div class="form-group"><label>상태</label>
+      <select id="v-status"><option>활성</option><option>검토중</option><option>비활성</option></select>
+    </div>
+    <div class="form-group full"><label>가능 공정 (복수 선택)</label><div class="check-group" id="proc-checks"></div></div>
+    <div class="form-group full"><label>담당 프로젝트</label>
+      <div class="check-group">
+        <label class="check-item"><input type="checkbox" id="pj-pnd" value="트랜시스PnD"> 트랜시스 PnD</label>
+        <label class="check-item"><input type="checkbox" id="pj-a6"  value="모비스A6"> 모비스 A6</label>
+        <label class="check-item"><input type="checkbox" id="pj-a8"  value="모비스A8"> 모비스 A8</label>
+      </div>
+    </div>
+    <div class="form-group full"><label>비고</label><textarea id="v-note" placeholder="특이사항, 협력 이력 등"></textarea></div>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end;">
+    <button class="btn btn-ghost" onclick="closeModal('vModal')">취소</button>
+    <button class="btn btn-cyan"  onclick="saveVendor()">저장</button>
+  </div>
+</div>
+</div>
+
+<!-- ══ 견적 모달 ══ -->
+<div class="modal-bg" id="oModal">
+<div class="modal">
+  <div class="modal-title">견적 이력 등록</div>
+  <div class="form-grid">
+    <div class="form-group"><label>견적일 *</label><input id="o-date" type="date"></div>
+    <div class="form-group"><label>업체 *</label><select id="o-vendor"><option value="">업체 선택</option></select></div>
+    <div class="form-group"><label>프로젝트</label>
+      <select id="o-project"><option value="">선택</option><option>트랜시스PnD</option><option>모비스A6</option><option>모비스A8</option></select>
+    </div>
+    <div class="form-group"><label>공정</label><select id="o-process"><option value="">선택</option></select></div>
+    <div class="form-group"><label>수량 (개)</label><input id="o-qty" type="number" placeholder="500"></div>
+    <div class="form-group"><label>단가 (원)</label><input id="o-price" type="number" placeholder="15000"></div>
+    <div class="form-group"><label>납기 (일)</label><input id="o-lead" type="number" placeholder="14"></div>
+    <div class="form-group"><label>납기 준수</label>
+      <select id="o-delivery"><option>준수</option><option>지연</option><option>미정</option></select>
+    </div>
+    <div class="form-group full"><label>비고</label><textarea id="o-note" placeholder="특이사항"></textarea></div>
+  </div>
+  <div style="display:flex;gap:10px;margin-top:18px;justify-content:flex-end;">
+    <button class="btn btn-ghost" onclick="closeModal('oModal')">취소</button>
+    <button class="btn btn-cyan"  onclick="saveOrder()">저장</button>
+  </div>
+</div>
+</div>
+
+<script>
+// ══════════════════════════════════════════
+// 상수
+// ══════════════════════════════════════════
+const PROCS=[
+  {key:'열간단조',track:'A'},{key:'정밀선삭',track:'A'},
+  {key:'냉간단조',track:'B'},{key:'1차가공',track:'B'},{key:'드릴링',track:'B'},
+  {key:'소결성형',track:'C'},
+  {key:'열처리',track:'공통'},{key:'기어가공',track:'공통'},
+  {key:'연마',track:'공통'},{key:'ASSY',track:'공통'},{key:'CMM검사',track:'공통'},
+];
+const TCOL={A:'#ffd166',B:'#00b4d8',C:'#06d6a0','공통':'#e94560'};
+const COMMON=['열처리','기어가공','연마','ASSY'];
+const TDEFS=[
+  {key:'A',label:'Track A\n(환봉)',  req:['열간단조',...COMMON]},
+  {key:'B',label:'Track B\n(파이프)',req:['냉간단조','1차가공',...COMMON]},
+  {key:'C',label:'Track C\n(소결)', req:['소결성형',...COMMON]},
+];
+const PROJS=['트랜시스PnD','모비스A6','모비스A8'];
+const PCOLS=['rgba(233,69,96,.8)','rgba(0,180,216,.8)','rgba(6,214,160,.8)'];
+const API_URL='/api';
+
+// ══════════════════════════════════════════
+// 전역
+// ══════════════════════════════════════════
+let vendors=[],orders=[],editIdx=-1,vFilter='all';
+let cTrack,cPrice,cRadar,cBar;
+
+// ══════════════════════════════════════════
+// 동기화 상태
+// ══════════════════════════════════════════
+function sync(s,m){
+  document.getElementById('syncDot').className='sync-dot'+(s==='syncing'?' syncing':s==='error'?' error':'');
+  document.getElementById('syncMsg').textContent=m;
+}
+
+// ══════════════════════════════════════════
+// API
+// ══════════════════════════════════════════
+async function loadAll(){
+  sync('syncing','구글시트 로딩중...');
+  try{
+    const [vR,oR]=await Promise.all([
+      fetch(`${API_URL}?sheet=vendors`).then(r=>r.json()),
+      fetch(`${API_URL}?sheet=orders`).then(r=>r.json()),
+    ]);
+    vendors=(vR.data||[]).filter(v=>v.name);
+    orders =(oR.data||[]).filter(o=>o.vendor);
+    localStorage.setItem('vendors',JSON.stringify(vendors));
+    localStorage.setItem('orders', JSON.stringify(orders));
+    sync('ok','동기화 완료 '+new Date().toLocaleTimeString('ko-KR'));
+  }catch(e){
+    vendors=JSON.parse(localStorage.getItem('vendors')||'[]');
+    orders =JSON.parse(localStorage.getItem('orders') ||'[]');
+    sync('error','오프라인 캐시 - '+e.message);
+  }
+  renderAll();
+}
+
+async function apiPost(body){
+  const r=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  return r.json();
+}
+
+async function syncAnalysis(){
+  sync('syncing','분석 갱신중...');
+  try{ await apiPost({action:'refreshAnalysis'}); sync('ok','분석 시트 갱신 완료'); }
+  catch(e){ sync('error','갱신 실패'); }
+}
+
+// ══════════════════════════════════════════
+// CSV 내보내기
+// ══════════════════════════════════════════
+function toCSV(headers, rows){
+  const esc=v=>{
+    const s=String(v===null||v===undefined?'':v);
+    return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:s;
+  };
+  return '\uFEFF'+[headers,...rows].map(r=>r.map(esc).join(',')).join('\r\n');
+}
+
+function downloadCSV(filename, csv){
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
+  a.download=filename; a.click(); URL.revokeObjectURL(a.href);
+}
+
+function exportCSV(type){
+  const date=new Date().toISOString().slice(0,10);
+  if(type==='vendors'){
+    const headers=['업체명','지역','연락처','이메일','보유인증','MOQ','평균납기(일)','기준단가(원)','대응력점수','상태','가능공정','담당프로젝트','비고'];
+    const rows=vendors.map(v=>[v.name,v.location,v.phone,v.email,v.cert,v.moq,v.lead,v.price,v.response,v.status,(v.processes||[]).join('|'),(v.projects||[]).join('|'),v.note]);
+    downloadCSV(`업체POOL_${date}.csv`, toCSV(headers,rows));
+  }
+  if(type==='orders'){
+    const headers=['견적일','업체명','프로젝트','공정','수량(개)','단가(원)','납기(일)','납기준수','비고'];
+    const rows=orders.map(o=>[o.date,o.vendor,o.project,o.process,o.qty,o.price,o.lead,o.delivery,o.note]);
+    downloadCSV(`견적이력_${date}.csv`, toCSV(headers,rows));
+  }
+  if(type==='analysis'){
+    // 분석 데이터 계산 후 CSV
+    const scored=calcScores(vendors);
+    const headers=['업체명','담당프로젝트','가격점수(40%)','품질점수(30%)','납기점수(20%)','대응력점수(10%)','종합점수','등급','기준단가(원)'];
+    const rows=scored.map(v=>[v.name,(v.projects||[]).join('|'),v.sc.price,v.sc.quality,v.sc.lead,v.sc.response,v.sc.total,v.sc.grade,v.price||'']);
+    downloadCSV(`경쟁력분석_${date}.csv`, toCSV(headers,rows));
+  }
+}
+
+function exportAllCSV(){
+  exportCSV('vendors');
+  setTimeout(()=>exportCSV('orders'),300);
+  setTimeout(()=>exportCSV('analysis'),600);
+}
+
+// ══════════════════════════════════════════
+// 렌더링
+// ══════════════════════════════════════════
+function renderAll(){
+  document.getElementById('kpi-v').textContent=vendors.length;
+  document.getElementById('kpi-o').textContent=orders.length;
+  const ap=document.getElementById('anProc');
+  if(ap.options.length<=1) PROCS.forEach(p=>{const o=document.createElement('option');o.textContent=p.key;ap.appendChild(o);});
+  renderDashboard(); renderVendors(); renderProcess(); renderOrders(); renderAnalysis();
+}
+
+function showTab(t,el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(x=>x.classList.remove('active'));
+  document.getElementById('sec-'+t).classList.add('active');
+  el.classList.add('active');
+}
+
+// ── 대시보드 ──
+function renderDashboard(){
+  const rec=[...orders].sort((a,b)=>(b.date||'').localeCompare(a.date||'')).slice(0,5);
+  document.getElementById('recentBody').innerHTML=rec.length
+    ?rec.map(o=>`<tr>
+      <td>${o.date||'-'}</td><td style="font-weight:600">${o.vendor||'-'}</td>
+      <td><span class="tag" style="background:rgba(0,180,216,.12);color:var(--cyan)">${o.project||'-'}</span></td>
+      <td>${o.process||'-'}</td>
+      <td>${o.qty?Number(o.qty).toLocaleString():'-'}</td>
+      <td style="color:var(--yellow)">${o.price?Number(o.price).toLocaleString()+'원':'-'}</td>
+      <td><span class="status-badge ${o.delivery==='준수'?'s-active':o.delivery==='지연'?'s-inactive':'s-review'}">${o.delivery||'-'}</span></td>
+    </tr>`).join('')
+    :'<tr><td colspan="7" class="loading-box">견적 이력 없음</td></tr>';
+
+  const c1=document.getElementById('chartTrack').getContext('2d');
+  if(cTrack)cTrack.destroy();
+  const hasAll=(v,keys)=>keys.every(k=>(v.processes||[]).includes(k));
+  cTrack=new Chart(c1,{type:'bar',data:{labels:TDEFS.map(t=>t.label),
+    datasets:PROJS.map((pk,pi)=>({label:pk,barPercentage:.8,categoryPercentage:.6,
+      data:TDEFS.map(t=>vendors.filter(v=>(v.projects||[]).includes(pk)&&hasAll(v,t.req)).length),
+      backgroundColor:PCOLS[pi],borderRadius:5,borderSkipped:false}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:true,labels:{color:'#8a8a9a',boxWidth:10,font:{size:10}}}},
+      scales:{x:{ticks:{color:'#8a8a9a',font:{size:10},maxRotation:0},grid:{color:'rgba(255,255,255,.04)'}},
+              y:{beginAtZero:true,ticks:{color:'#8a8a9a',stepSize:1},grid:{color:'rgba(255,255,255,.06)'},
+                 title:{display:true,text:'가능 업체 수(개사)',color:'#8a8a9a',font:{size:10}}}}}});
+
+  const c2=document.getElementById('chartPrice').getContext('2d');
+  if(cPrice)cPrice.destroy();
+  cPrice=new Chart(c2,{type:'bar',data:{labels:['트랜시스 PnD','모비스 A6','모비스 A8'],
+    datasets:[{label:'평균 단가(원)',
+      data:PROJS.map(p=>{const f=orders.filter(o=>o.project===p&&o.price);return f.length?Math.round(f.reduce((a,o)=>a+Number(o.price),0)/f.length):0;}),
+      backgroundColor:PCOLS,borderRadius:6,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>` ${Number(i.parsed.y).toLocaleString()}원`}}},
+      scales:{x:{ticks:{color:'#8a8a9a'},grid:{color:'rgba(255,255,255,.04)'}},
+              y:{beginAtZero:true,ticks:{color:'#8a8a9a',callback:v=>v.toLocaleString()},grid:{color:'rgba(255,255,255,.06)'}}}}});
+}
+
+// ── 업체 Pool ──
+function setVF(f,el){
+  vFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  el.classList.add('active'); renderVendors();
+}
+function renderVendors(){
+  const q=(document.getElementById('vendorSearch')?.value||'').toLowerCase();
+  const list=vendors.filter(v=>(vFilter==='all'||(v.projects||[]).includes(vFilter))&&
+    (!q||v.name?.toLowerCase().includes(q)||v.location?.toLowerCase().includes(q)||v.cert?.toLowerCase().includes(q)));
+  const tb=document.getElementById('vendorBody');
+  if(!list.length){tb.innerHTML='<tr><td colspan="11" class="loading-box">조건에 맞는 업체 없음</td></tr>';return;}
+  tb.innerHTML=list.map(v=>{
+    const ri=vendors.indexOf(v);
+    const ptags=(v.processes||[]).map(p=>{const c=TCOL[PROCS.find(x=>x.key===p)?.track||'공통'];return `<span class="tag" style="background:${c}22;color:${c}">${p}</span>`;}).join('');
+    const pjtags=(v.projects||[]).map(p=>`<span class="tag" style="background:rgba(255,255,255,.07);color:var(--muted)">${p}</span>`).join('');
+    const rs=Number(v.response)||0;
+    const rc=rs>=80?'var(--green)':rs>=50?'var(--yellow)':'var(--red)';
+    const sc=v.status==='활성'?'s-active':v.status==='검토중'?'s-review':'s-inactive';
+    return `<tr>
+      <td style="font-weight:600">${v.name||'-'}</td><td>${v.location||'-'}</td>
+      <td style="max-width:160px">${ptags||'-'}</td><td>${pjtags||'-'}</td>
+      <td style="font-size:.77rem">${v.cert||'-'}</td>
+      <td>${v.moq?Number(v.moq).toLocaleString():'-'}</td>
+      <td>${v.lead||'-'}</td>
+      <td style="color:var(--yellow)">${v.price?Number(v.price).toLocaleString()+'원':'-'}</td>
+      <td style="min-width:90px"><div class="score-bar-wrap">
+        <div class="score-bar-bg"><div class="score-bar-fill" style="width:${rs}%;background:${rc}"></div></div>
+        <span style="font-size:.73rem;color:${rc};min-width:24px">${rs}</span>
+      </div></td>
+      <td><span class="status-badge ${sc}">${v.status||'-'}</span></td>
+      <td style="display:flex;gap:4px">
+        <button class="btn btn-yellow" style="padding:3px 9px;font-size:.72rem" onclick="openVModal(${ri})">수정</button>
+        <button class="btn btn-red"    style="padding:3px 9px;font-size:.72rem" onclick="deleteVendor(${ri})">삭제</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openVModal(idx){
+  editIdx=idx;
+  const v=idx>=0?vendors[idx]:{};
+  document.getElementById('vModalTitle').textContent=idx>=0?'업체 수정':'업체 등록';
+  ['name','location','phone','email','cert','moq','lead','price','response','note'].forEach(f=>document.getElementById('v-'+f).value=v[f]||'');
+  document.getElementById('v-status').value=v.status||'활성';
+  document.getElementById('proc-checks').innerHTML=PROCS.map(p=>`
+    <label class="check-item">
+      <input type="checkbox" value="${p.key}" ${(v.processes||[]).includes(p.key)?'checked':''}>
+      <span style="color:${TCOL[p.track]}">${p.key}</span>
+      <span style="font-size:.67rem;color:var(--muted)">(${p.track})</span>
+    </label>`).join('');
+  ['pnd','a6','a8'].forEach((id,i)=>document.getElementById('pj-'+id).checked=(v.projects||[]).includes(['트랜시스PnD','모비스A6','모비스A8'][i]));
+  document.getElementById('vModal').classList.add('open');
+}
+
+async function saveVendor(){
+  const name=document.getElementById('v-name').value.trim();
+  if(!name){alert('업체명을 입력해주세요');return;}
+  const v={name,
+    processes:Array.from(document.querySelectorAll('#proc-checks input:checked')).map(cb=>cb.value),
+    projects:['pnd','a6','a8'].map((id,i)=>document.getElementById('pj-'+id).checked?['트랜시스PnD','모비스A6','모비스A8'][i]:null).filter(Boolean),
+    location:document.getElementById('v-location').value, phone:document.getElementById('v-phone').value,
+    email:document.getElementById('v-email').value,       cert:document.getElementById('v-cert').value,
+    moq:document.getElementById('v-moq').value,           lead:document.getElementById('v-lead').value,
+    price:document.getElementById('v-price').value,       response:document.getElementById('v-response').value,
+    status:document.getElementById('v-status').value,     note:document.getElementById('v-note').value,
+    updatedAt:new Date().toISOString()};
+  sync('syncing','구글시트 저장중...');
+  try{
+    if(editIdx>=0&&vendors[editIdx]?._id) await apiPost({action:'update',sheet:'vendors',id:vendors[editIdx]._id,row:v});
+    else await apiPost({action:'add',sheet:'vendors',row:v});
+    await loadAll();
+  }catch(e){
+    if(editIdx>=0) vendors[editIdx]={...vendors[editIdx],...v};
+    else vendors.push({_id:Date.now().toString(),...v});
+    localStorage.setItem('vendors',JSON.stringify(vendors));
+    renderAll(); sync('error','로컬 저장(API 실패)');
+  }
+  closeModal('vModal');
+}
+
+async function deleteVendor(idx){
+  if(!confirm(`"${vendors[idx].name}" 업체를 삭제하시겠습니까?`))return;
+  sync('syncing','삭제중...');
+  try{ await apiPost({action:'delete',sheet:'vendors',id:vendors[idx]._id}); await loadAll(); }
+  catch(e){ vendors.splice(idx,1); localStorage.setItem('vendors',JSON.stringify(vendors)); renderAll(); sync('error','로컬 삭제'); }
+}
+
+// ── 공정 관리 ──
+function renderProcess(){
+  const trackDefs=[
+    {c:'#ffd166',l:'Track A (환봉)',   s:['열간단조','정밀선삭']},
+    {c:'#00b4d8',l:'Track B (파이프)', s:['냉간단조','1차가공','드릴링']},
+    {c:'#06d6a0',l:'Track C (소결)',   s:['소결성형']},
+    {c:'#e94560',l:'공통 후처리 합류', s:['열처리','기어가공','연마','ASSY','CMM검사']},
+  ];
+  document.getElementById('flowWrap').innerHTML=trackDefs.map(td=>`
+    <div class="flow-row">
+      <div class="flow-label" style="background:${td.c}22;color:${td.c};border:1px solid ${td.c}44">${td.l}</div>
+      ${td.s.map((s,i)=>`${i>0?'<div class="flow-arrow">→</div>':''}<div class="flow-node" style="background:${td.c}18;color:${td.c};border-color:${td.c}44">${s}</div>`).join('')}
+    </div>`).join('');
+  document.getElementById('procBody').innerHTML=PROCS.map(p=>{
+    const m=vendors.filter(v=>(v.processes||[]).includes(p.key));
+    const c=TCOL[p.track];
+    return `<tr>
+      <td><span class="tag" style="background:${c}22;color:${c}">${p.track}</span></td>
+      <td style="font-weight:600">${p.key}</td>
+      <td><span style="color:${c};font-weight:700;font-size:1.05rem">${m.length}</span> 개사</td>
+      <td style="font-size:.77rem;color:var(--muted)">${m.map(v=>v.name).join(', ')||'-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── 견적 이력 ──
+function renderOrders(){
+  const q=(document.getElementById('orderSearch')?.value||'').toLowerCase();
+  const proj=document.getElementById('orderProjF')?.value||'';
+  const list=orders.filter(o=>(!proj||o.project===proj)&&(!q||o.vendor?.toLowerCase().includes(q)||o.process?.toLowerCase().includes(q)||o.project?.toLowerCase().includes(q)))
+    .sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  const tb=document.getElementById('orderBody');
+  if(!list.length){tb.innerHTML='<tr><td colspan="10" class="loading-box">견적 이력 없음</td></tr>';return;}
+  tb.innerHTML=list.map(o=>{
+    const ri=orders.indexOf(o);
+    const dc=o.delivery==='준수'?'s-active':o.delivery==='지연'?'s-inactive':'s-review';
+    return `<tr>
+      <td>${o.date||'-'}</td><td style="font-weight:600">${o.vendor||'-'}</td>
+      <td><span class="tag" style="background:rgba(0,180,216,.1);color:var(--cyan)">${o.project||'-'}</span></td>
+      <td>${o.process||'-'}</td>
+      <td>${o.qty?Number(o.qty).toLocaleString():'-'}</td>
+      <td style="color:var(--yellow)">${o.price?Number(o.price).toLocaleString()+'원':'-'}</td>
+      <td>${o.lead||'-'}</td>
+      <td><span class="status-badge ${dc}">${o.delivery||'-'}</span></td>
+      <td style="font-size:.76rem;color:var(--muted);max-width:110px">${o.note||'-'}</td>
+      <td><button class="btn btn-red" style="padding:3px 9px;font-size:.72rem" onclick="deleteOrder(${ri})">삭제</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function openOModal(){
+  document.getElementById('o-date').value=new Date().toISOString().slice(0,10);
+  document.getElementById('o-vendor').innerHTML='<option value="">업체 선택</option>'+vendors.map(v=>`<option>${v.name}</option>`).join('');
+  document.getElementById('o-process').innerHTML='<option value="">공정 선택</option>'+
+    ['A','B','C','공통'].map(t=>`<optgroup label="Track ${t}">${PROCS.filter(p=>p.track===t).map(p=>`<option>${p.key}</option>`).join('')}</optgroup>`).join('');
+  document.getElementById('oModal').classList.add('open');
+}
+
+async function saveOrder(){
+  const vendor=document.getElementById('o-vendor').value;
+  if(!vendor){alert('업체를 선택해주세요');return;}
+  const o={date:document.getElementById('o-date').value,vendor,
+    project:document.getElementById('o-project').value,  process:document.getElementById('o-process').value,
+    qty:document.getElementById('o-qty').value,           price:document.getElementById('o-price').value,
+    lead:document.getElementById('o-lead').value,         delivery:document.getElementById('o-delivery').value,
+    note:document.getElementById('o-note').value,         createdAt:new Date().toISOString()};
+  sync('syncing','구글시트 저장중...');
+  try{ await apiPost({action:'add',sheet:'orders',row:o}); await loadAll(); }
+  catch(e){ orders.push({_id:Date.now().toString(),...o}); localStorage.setItem('orders',JSON.stringify(orders)); renderAll(); sync('error','로컬 저장'); }
+  closeModal('oModal');
+}
+
+async function deleteOrder(idx){
+  if(!confirm('이 이력을 삭제하시겠습니까?'))return;
+  try{ await apiPost({action:'delete',sheet:'orders',id:orders[idx]._id}); await loadAll(); }
+  catch(e){ orders.splice(idx,1); localStorage.setItem('orders',JSON.stringify(orders)); renderAll(); }
+}
+
+// ── 경쟁력 분석 ──
+function calcScores(vList){
+  const prices=vList.map(v=>Number(v.price)||0).filter(p=>p>0);
+  const maxP=Math.max(...prices,1),minP=Math.min(...prices,0);
+  return vList.map(v=>{
+    const price=Number(v.price)||0;
+    const pS=price>0?Math.round((1-(price-minP)/(maxP-minP||1))*100):50;
+    const qS=v.cert?(String(v.cert).includes('IATF')?100:String(v.cert).includes('ISO')?75:50):30;
+    const lead=Number(v.lead)||0;
+    const lS=lead>0?Math.max(0,Math.round(100-lead*2)):50;
+    const rS=Number(v.response)||50;
+    const total=Math.round(pS*.4+qS*.3+lS*.2+rS*.1);
+    const grade=total>=85?'A+':total>=75?'A':total>=65?'B+':total>=55?'B':'C';
+    return {...v,sc:{price:pS,quality:qS,lead:lS,response:rS,total,grade}};
+  }).sort((a,b)=>b.sc.total-a.sc.total);
+}
+
+function renderAnalysis(){
+  const projF=document.getElementById('anProj')?.value||'';
+  const procF=document.getElementById('anProc')?.value||'';
+  let vList=vendors.filter(v=>(!projF||(v.projects||[]).includes(projF))&&(!procF||(v.processes||[]).includes(procF)));
+  const scored=calcScores(vList);
+
+  document.getElementById('rankList').innerHTML=scored.slice(0,10).map((v,i)=>{
+    const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+    const gc=v.sc.total>=80?'var(--green)':v.sc.total>=60?'var(--yellow)':'var(--red)';
+    const gcolor=v.sc.grade.startsWith('A')?'var(--green)':v.sc.grade.startsWith('B')?'var(--yellow)':'var(--red)';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <div style="min-width:26px;font-size:.95rem">${medal}</div>
+      <div style="flex:1">
+        <div style="font-weight:600;font-size:.87rem">${v.name}</div>
+        <div style="font-size:.7rem;color:var(--muted)">${(v.projects||[]).join(' · ')||'-'}</div>
+      </div>
+      <span class="status-badge" style="background:${gcolor}22;color:${gcolor}">${v.sc.grade}</span>
+      <div class="score-bar-wrap">
+        <div class="score-bar-bg" style="width:100px"><div class="score-bar-fill" style="width:${v.sc.total}%;background:${gc}"></div></div>
+        <span style="color:${gc};font-weight:700;min-width:28px;font-size:.88rem">${v.sc.total}</span>
+      </div>
+    </div>`;
+  }).join('')||'<div class="loading-box">분석 데이터 없음</div>';
+
+  const c3=document.getElementById('chartRadar').getContext('2d');
+  if(cRadar)cRadar.destroy();
+  const top5=scored.slice(0,5);
+  cRadar=new Chart(c3,{type:'radar',
+    data:{labels:['가격경쟁력','품질(인증)','납기대응','대응력','종합점수'],
+      datasets:top5.map((v,i)=>({label:v.name,
+        data:[v.sc.price,v.sc.quality,v.sc.lead,v.sc.response,v.sc.total],
+        borderColor:PCOLS[i%PCOLS.length],backgroundColor:PCOLS[i%PCOLS.length].replace('.8','.12'),
+        pointBackgroundColor:PCOLS[i%PCOLS.length]}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#8a8a9a',font:{size:10}}}},
+      scales:{r:{min:0,max:100,ticks:{color:'#8a8a9a',font:{size:9}},
+        grid:{color:'rgba(255,255,255,.1)'},pointLabels:{color:'#8a8a9a',font:{size:10}}}}}});
+
+  const c4=document.getElementById('chartBar').getContext('2d');
+  if(cBar)cBar.destroy();
+  const bd=scored.slice(0,10).map(v=>{
+    const os=orders.filter(o=>o.vendor===v.name&&o.price);
+    return os.length?Math.round(os.reduce((a,o)=>a+Number(o.price),0)/os.length):(Number(v.price)||0);
+  });
+  cBar=new Chart(c4,{type:'bar',
+    data:{labels:scored.slice(0,10).map(v=>v.name),
+      datasets:[{label:'평균 단가(원)',data:bd,backgroundColor:bd.map((_,i)=>PCOLS[i%PCOLS.length]),borderRadius:5,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>` ${Number(i.parsed.x).toLocaleString()}원`}}},
+      scales:{x:{ticks:{color:'#8a8a9a',callback:v=>v.toLocaleString()},grid:{color:'rgba(255,255,255,.04)'}},
+              y:{ticks:{color:'#8a8a9a',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}}}}});
+}
+
+// ══════════════════════════════════════════
+// 유틸
+// ══════════════════════════════════════════
+function closeModal(id){ document.getElementById(id).classList.remove('open'); editIdx=-1; }
+document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+function logout(){ if(confirm('로그아웃 하시겠습니까?')){ sessionStorage.removeItem('pg_auth'); location.href='index.html'; } }
+
+window.addEventListener('DOMContentLoaded',()=>{
+  if(sessionStorage.getItem('pg_auth')!=='true'){ location.href='index.html'; return; }
+  vendors=JSON.parse(localStorage.getItem('vendors')||'[]');
+  orders =JSON.parse(localStorage.getItem('orders') ||'[]');
+  renderProcess();
+  renderAll();
+  loadAll();
+});
+</script>
+</body>
+</html>
